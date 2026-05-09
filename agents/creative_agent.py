@@ -18,12 +18,13 @@ async def generate_content(niche_data: str) -> dict:
     """
     prompt = f"Generate a script and metadata for this niche: {niche_data}"
     result = await creative_agent.run(prompt)
-    # The output from Gemini needs to be parsed as JSON. We assume the agent returns a valid JSON string.
-    import json
+
+    from core.utils import parse_llm_json
     try:
-        data = json.loads(result.data.strip('```json\n').strip('```'))
+        data = parse_llm_json(result.data)
         return data
     except Exception as e:
+        print(f"[Creative Agent] Error parsing JSON: {e}")
         # Fallback if json parsing fails
         return {
             "script": "Did you know that AI is taking over the world? Subscribe for more!",

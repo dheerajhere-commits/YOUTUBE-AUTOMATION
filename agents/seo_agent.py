@@ -26,8 +26,8 @@ async def optimize_metadata(content: dict) -> dict:
             }
 
         result = await seo_agent.run(prompt)
-        import json
-        data = json.loads(result.data.strip('```json\n').strip('```'))
+        from core.utils import parse_llm_json
+        data = parse_llm_json(result.data)
         return data
     except Exception as e:
         print(f"[SEO Agent] Error optimizing metadata: {e}")
