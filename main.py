@@ -1,3 +1,4 @@
+import os
 import typer
 import asyncio
 from database.db import init_db, get_db_connection
@@ -46,6 +47,12 @@ def account_link(platform: str = typer.Option(..., help="Platform: 'youtube' or 
         typer.echo("Invalid platform. Use 'youtube' or 'instagram'.")
         raise typer.Exit(code=1)
 
+    if channel_name:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE accounts SET channel_name=? WHERE account_id=?", (channel_name, account_id))
+            conn.commit()
+
 @app.command()
 def list_accounts():
     """List all connected channels/accounts."""
@@ -76,8 +83,53 @@ def remove_account(account_id: str = typer.Argument(..., help="The account ID or
             typer.echo(f"Account not found: {account_id}")
 
 @app.command()
-def auto_pilot():
-    """A loop that: Finds Niche -> Generates Script -> Creates Video -> Posts to 100 Channels."""
+def start_scheduler():
+    """Run the background posting scheduler."""
+    from core.scheduler import run_scheduler
+    asyncio.run(run_scheduler())
+
+@app.command()
+def status():
+    """Show system status: top niches, recent uploads, account health."""
+    typer.echo("\n=== NEURAL MEMORY (Top Niches) ===")
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT niche, score, encounters FROM neural_memory ORDER BY score DESC LIMIT 10")
+        for row in cursor.fetchall():
+            bar = "█" * int(row['score'])
+            typer.echo(f"  {row['niche'][:30]:<30} {bar} {row['score']:.1f}/10 ({row['encounters']} runs)")
+
+    typer.echo("\n=== RECENT UPLOADS (Last 10) ===")
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT account_id, video_title, status, created_at FROM video_logs ORDER BY created_at DESC LIMIT 10")
+        for row in cursor.fetchall():
+            typer.echo(f"  [{row['status'].upper()}] {row['account_id']} — {row['video_title']}")
+
+    typer.echo("\n=== ACCOUNTS ===")
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        # Fallback to avoid error if migrating old DBs without channel_name
+        try:
+            cursor.execute("SELECT platform, account_id, channel_name, status FROM accounts")
+        except:
+            cursor.execute("SELECT platform, account_id, status FROM accounts")
+
+        for row in cursor.fetchall():
+            name = f"({row['channel_name']})" if 'channel_name' in row.keys() and row['channel_name'] else ""
+            typer.echo(f"  {row['platform'].upper()} — {row['account_id']} {name} [{row['status']}]")
+
+@app.command()
+def auto_pilot(
+    dry_run: bool = typer.Option(False, "--dry-run", help="Simulate full pipeline without posting.")
+):
+    """Full pipeline: Niche -> Script -> Video -> Post."""
+    if dry_run:
+        typer.echo("🔍 DRY RUN MODE — No videos will be posted to real endpoints.")
+        os.environ['NEXUS_DRY_RUN'] = 'true'
+    else:
+        os.environ['NEXUS_DRY_RUN'] = 'false'
+
     typer.echo("Starting Auto-Pilot mode...")
 
     # Fetch accounts from DB

@@ -48,14 +48,16 @@ def link_google_account(account_id):
                     token.write(json.dumps(creds_data))
                 print(f"Dummy token saved to {token_path}")
 
-    # Store in database
+    # Store in database (Channel name updated by main.py if provided)
     with get_db_connection() as conn:
         cursor = conn.cursor()
         refresh_token_to_store = creds.refresh_token if creds and hasattr(creds, 'refresh_token') else 'dummy_refresh_token'
+        # Do not overwrite channel_name if it exists, let CLI handle it
         cursor.execute('''
             INSERT INTO accounts (platform, account_id, refresh_token)
             VALUES (?, ?, ?)
-            ON CONFLICT(account_id) DO UPDATE SET refresh_token=excluded.refresh_token
+            ON CONFLICT(account_id) DO UPDATE SET
+                refresh_token=excluded.refresh_token
         ''', ('youtube', account_id, refresh_token_to_store))
         conn.commit()
 
@@ -67,9 +69,24 @@ def get_google_credentials(account_id):
     Retrieves stored Google credentials for an account.
     """
     token_path = f'token_{account_id}.json'
-    if os.path.exists(token_path):
-        return Credentials.from_authorized_user_file(token_path, SCOPES)
-    return None
+    if not os.path.exists(token_path):
+        return None
+
+    creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+
+    # Auto-refresh if expired
+    if creds and creds.expired and creds.refresh_token:
+        try:
+            print(f"[Auth] Refreshing expired token for {account_id}...")
+            creds.refresh(Request())
+            with open(token_path, 'w') as f:
+                f.write(creds.to_json())
+            print(f"[Auth] Token refreshed and saved.")
+        except Exception as e:
+            print(f"[Auth] Token refresh failed for {account_id}: {e}")
+            return None
+
+    return creds if creds and creds.valid else None
 
 def link_instagram_account(account_id, access_token):
     """

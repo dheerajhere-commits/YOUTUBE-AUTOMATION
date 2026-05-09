@@ -2,30 +2,61 @@ import os
 from gtts import gTTS
 import moviepy as mpe
 import urllib.request
+import requests
+from core.config import config
+
+def fetch_stock_video(query: str) -> str:
+    """Fetches real stock footage from Pexels API."""
+    api_key = config.get('api_keys', {}).get('pexels_api')
+    if not api_key or api_key == "YOUR_PEXELS_API_KEY":
+        print("[Production Agent] Pexels API key not configured. Using fallback placeholder video.")
+        video_url = "https://download.samplelib.com/mp4/sample-5s.mp4"
+        path = f"temp_video_{hash(query)}.mp4"
+        urllib.request.urlretrieve(video_url, path)
+        return path
+
+    print(f"[Production Agent] Fetching stock footage from Pexels API for '{query}'...")
+    headers = {"Authorization": api_key}
+    try:
+        r = requests.get(
+            f"https://api.pexels.com/videos/search?query={query}&per_page=5&orientation=portrait",
+            headers=headers
+        )
+        videos = r.json().get('videos', [])
+        if not videos:
+            raise ValueError("No stock footage found")
+        # Pick best quality under 30MB (simplified: pick highest width for demo)
+        video_files = videos[0]['video_files']
+        chosen = sorted(video_files, key=lambda x: x.get('width', 0))[-1]
+        path = f"temp_stock_{hash(query)}.mp4"
+        urllib.request.urlretrieve(chosen['link'], path)
+        return path
+    except Exception as e:
+        print(f"[Production Agent] Pexels API failed: {e}. Using fallback placeholder video.")
+        video_url = "https://download.samplelib.com/mp4/sample-5s.mp4"
+        path = f"temp_video_{hash(query)}.mp4"
+        urllib.request.urlretrieve(video_url, path)
+        return path
 
 async def create_video(script: str, output_path: str):
     """
     Generates a video programmatically.
-    Logic: Uses MoviePy to overlay AI-generated voiceovers (gTTS) onto a downloaded placeholder video (or stock footage via API).
+    Logic: Uses MoviePy to overlay AI-generated voiceovers (gTTS) onto stock footage.
     """
     print(f"[Production Agent] Generating voiceover for script...")
 
     audio_path = f"temp_audio_{hash(script)}.mp3"
+    placeholder_video_path = None
 
     try:
         # Generate TTS audio
         tts = gTTS(text=script, lang='en')
         tts.save(audio_path)
 
-        print(f"[Production Agent] Fetching stock footage (Placeholder)...")
-        # In a real scenario you would call Pexels API:
-        # response = requests.get(f"https://api.pexels.com/videos/search?query=nature", headers={"Authorization": PEXELS_API_KEY})
-        # video_url = response.json()['videos'][0]['video_files'][0]['link']
+        # Determine a keyword from the script (simplified, use first 10 chars as fallback)
+        query = "technology" if "AI" in script or "tech" in script.lower() else "nature"
 
-        # Download a placeholder video from a public source to avoid API keys in tests
-        video_url = "https://download.samplelib.com/mp4/sample-5s.mp4"
-        placeholder_video_path = f"temp_video_{hash(script)}.mp4"
-        urllib.request.urlretrieve(video_url, placeholder_video_path)
+        placeholder_video_path = fetch_stock_video(query)
 
         print(f"[Production Agent] Assembling video with MoviePy...")
         video_clip = mpe.VideoFileClip(placeholder_video_path)

@@ -1,7 +1,9 @@
 from pydantic_ai import Agent
 import os
+from core.config import config
 
-os.environ.setdefault('GOOGLE_API_KEY', 'dummy_key')
+gemini_key = config.get('api_keys', {}).get('gemini_api', 'dummy_key')
+os.environ.setdefault('GOOGLE_API_KEY', gemini_key if gemini_key != "YOUR_GEMINI_API_KEY" else 'dummy_key')
 
 strategy_agent = Agent(
     'gemini-1.5-flash',

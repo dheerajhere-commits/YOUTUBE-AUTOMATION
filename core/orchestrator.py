@@ -33,6 +33,7 @@ async def run_auto_pilot_loop(accounts):
 
     # 2. Find Niche (Research Agent)
     print("Finding niche...")
+    import os
     try:
         if os.environ.get('GOOGLE_API_KEY') == 'dummy_key':
             niche_data = "{'niche': 'AI Tutorials', 'target_audience': 'Tech enthusiasts', 'cpm_estimate': 15.0, 'competition_level': 'Medium'}"
@@ -91,18 +92,26 @@ async def run_auto_pilot_loop(accounts):
     # Process channels concurrently (using Brain's hardware limits)
     print(f"Processing for {len(accounts)} accounts with concurrency limit {concurrency_limit}...")
 
+    import hashlib
+    import os
+    # CREATE VIDEO ONCE
+    title_hash = hashlib.md5(content.get('title', '').encode()).hexdigest()[:8]
+    shared_video_path = f"assets/video_shared_{title_hash}.mp4"
+
+    if not os.path.exists(shared_video_path):
+        print("[Orchestrator] Creating shared video for all accounts...")
+        await create_video(content.get('script'), shared_video_path)
+    else:
+        print(f"[Orchestrator] Reusing existing video: {shared_video_path}")
+
     async def process_account(account):
         account_id = account['account_id']
         platform = account['platform']
         print(f"Processing for {platform} account: {account_id}")
 
-        # 4. Create Video (Production Agent)
-        video_path = f"assets/video_{account_id}_{hash(content.get('title'))}.mp4"
-        await create_video(content.get('script'), video_path)
-
-        # 5. Post Video (Posting Agent) with Retries
+        # 5. Post Video (Posting Agent) with Retries using shared video
         print(f"Initiating safe post for {account_id}...")
-        await safe_post(video_path, content, account_id)
+        await safe_post(shared_video_path, content.copy(), account_id)
 
         # Log to DB
         with get_db_connection() as conn:
@@ -110,7 +119,7 @@ async def run_auto_pilot_loop(accounts):
             cursor.execute('''
                 INSERT INTO video_logs (account_id, video_title, video_path, status)
                 VALUES (?, ?, ?, ?)
-            ''', (account_id, content.get('title'), video_path, 'posted'))
+            ''', (account_id, content.get('title'), shared_video_path, 'posted'))
             conn.commit()
 
     # Batch process using asyncio with chunks limited by concurrency_limit
@@ -120,9 +129,22 @@ async def run_auto_pilot_loop(accounts):
         await asyncio.gather(*tasks, return_exceptions=True)
 
     # 6. Brain Feedback Loop
-    # Simulate receiving performance metrics (views, engagement) from the platform 24h later
-    # We randomize a score here to simulate the AI learning over time
-    simulated_score = round(random.uniform(2.0, 10.0), 2)
-    brain.memorize_success(niche_name, strategy.get('theme', 'default'), simulated_score)
+    from core.analytics import fetch_youtube_stats
+    from core.auth import get_google_credentials
+
+    if os.environ.get('NEXUS_DRY_RUN') != 'true' and accounts:
+        # In a real system, we would query stats for a post made 24h+ ago.
+        # For simplicity, we query the first account's video using a placeholder ID or last known ID.
+        creds = get_google_credentials(accounts[0]['account_id'])
+        if creds and not (hasattr(creds, 'token') and creds.token == "dummy_token"):
+             print("[Orchestrator] Fetching real analytics for Brain feedback...")
+             real_score = fetch_youtube_stats(creds, "LATEST_VIDEO_ID") # In real app, pull from DB
+             brain.memorize_success(niche_name, strategy.get('theme', 'default'), real_score)
+        else:
+             print("[Orchestrator] No real credentials. Using simulated feedback for Brain.")
+             simulated_score = round(random.uniform(2.0, 10.0), 2)
+             brain.memorize_success(niche_name, strategy.get('theme', 'default'), simulated_score)
+    else:
+        print("[Orchestrator] Dry-run enabled. Skipping feedback loop.")
 
     print("Auto-Pilot Loop Completed.")

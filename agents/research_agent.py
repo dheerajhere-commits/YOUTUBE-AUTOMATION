@@ -1,9 +1,11 @@
 from pydantic_ai import Agent
 
 import os
+from core.config import config
 
-# Ensure dummy key is set if not provided to allow imports to succeed
-os.environ.setdefault('GOOGLE_API_KEY', 'dummy_key')
+# Ensure key is set if not provided to allow imports to succeed
+gemini_key = config.get('api_keys', {}).get('gemini_api', 'dummy_key')
+os.environ.setdefault('GOOGLE_API_KEY', gemini_key if gemini_key != "YOUR_GEMINI_API_KEY" else 'dummy_key')
 
 research_agent = Agent(
     'gemini-1.5-flash',

@@ -15,6 +15,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 platform TEXT NOT NULL,
                 account_id TEXT NOT NULL UNIQUE,
+                channel_name TEXT,
                 refresh_token TEXT,
                 status TEXT DEFAULT 'active',
                 last_used TIMESTAMP
