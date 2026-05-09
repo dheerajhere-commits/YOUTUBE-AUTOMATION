@@ -13,3 +13,4 @@ aiohttp
 google-genai
 sqlalchemy
 psutil
+pyinstaller
