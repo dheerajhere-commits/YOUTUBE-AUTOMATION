@@ -1,0 +1,6 @@
+*.pyc
+__pycache__/
+*.db
+token_*.json
+assets/
+config.yaml

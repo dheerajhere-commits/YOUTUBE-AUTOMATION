@@ -1,0 +1,14 @@
+typer
+pydantic-ai
+moviepy
+gtts
+requests
+google-api-python-client
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+pyyaml
+httpx
+aiohttp
+google-genai
+sqlalchemy
