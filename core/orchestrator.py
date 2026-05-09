@@ -11,6 +11,14 @@ from agents.ops_agent import manage_accounts
 from agents.posting_agent import post_video
 from core.brain import CognitiveBrain
 import random
+import tenacity
+
+@tenacity.retry(wait=tenacity.wait_exponential(min=2, max=30), stop=tenacity.stop_after_attempt(3))
+async def safe_post(video_path, metadata, account_id):
+    """
+    Safely post the video with exponential backoff retries.
+    """
+    await post_video(video_path, metadata, account_id)
 
 async def run_auto_pilot_loop(accounts):
     """
@@ -92,8 +100,9 @@ async def run_auto_pilot_loop(accounts):
         video_path = f"assets/video_{account_id}_{hash(content.get('title'))}.mp4"
         await create_video(content.get('script'), video_path)
 
-        # 5. Post Video (Posting Agent)
-        await post_video(video_path, content, account_id)
+        # 5. Post Video (Posting Agent) with Retries
+        print(f"Initiating safe post for {account_id}...")
+        await safe_post(video_path, content, account_id)
 
         # Log to DB
         with get_db_connection() as conn:

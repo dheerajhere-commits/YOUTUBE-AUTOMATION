@@ -24,34 +24,39 @@ def link_google_account(account_id):
             print(f"Refreshing token for {account_id}")
             creds.refresh(Request())
         else:
-            print(f"To link Google account {account_id}, follow the OAuth flow...")
-            # For a real implementation, you need client_secret.json
-            # flow = InstalledAppFlow.from_client_secrets_file(
-            #     'client_secret.json', SCOPES)
-            # creds = flow.run_local_server(port=0)
-
-            # Dummy implementation for illustration
-            creds_data = {
-                "token": "dummy_token",
-                "refresh_token": "dummy_refresh_token",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "client_id": "dummy_client_id",
-                "client_secret": "dummy_client_secret",
-                "scopes": SCOPES
-            }
-            with open(token_path, 'w') as token:
-                token.write(json.dumps(creds_data))
-
-            print(f"Dummy token saved to {token_path}")
+            print(f"To link Google account {account_id}, following the OAuth flow...")
+            if os.path.exists('client_secret.json'):
+                try:
+                    flow = InstalledAppFlow.from_client_secrets_file('client_secret.json', SCOPES)
+                    creds = flow.run_local_server(port=0)
+                    with open(token_path, 'w') as token:
+                        token.write(creds.to_json())
+                    print(f"Real OAuth token saved to {token_path}")
+                except Exception as e:
+                    print(f"OAuth flow failed: {e}")
+            else:
+                print("Notice: 'client_secret.json' not found. Falling back to dummy token flow for testing.")
+                creds_data = {
+                    "token": "dummy_token",
+                    "refresh_token": "dummy_refresh_token",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "client_id": "dummy_client_id",
+                    "client_secret": "dummy_client_secret",
+                    "scopes": SCOPES
+                }
+                with open(token_path, 'w') as token:
+                    token.write(json.dumps(creds_data))
+                print(f"Dummy token saved to {token_path}")
 
     # Store in database
     with get_db_connection() as conn:
         cursor = conn.cursor()
+        refresh_token_to_store = creds.refresh_token if creds and hasattr(creds, 'refresh_token') else 'dummy_refresh_token'
         cursor.execute('''
             INSERT INTO accounts (platform, account_id, refresh_token)
             VALUES (?, ?, ?)
             ON CONFLICT(account_id) DO UPDATE SET refresh_token=excluded.refresh_token
-        ''', ('youtube', account_id, 'dummy_refresh_token')) # In real app, creds.refresh_token
+        ''', ('youtube', account_id, refresh_token_to_store))
         conn.commit()
 
     print(f"Successfully linked account: {account_id}")
