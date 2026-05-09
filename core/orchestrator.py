@@ -3,14 +3,16 @@ import os
 from database.db import get_db_connection
 
 from agents.research_agent import find_niche
+from agents.strategy_agent import define_strategy
 from agents.creative_agent import generate_content
+from agents.seo_agent import optimize_metadata
 from agents.production_agent import create_video
 from agents.ops_agent import manage_accounts
 from agents.posting_agent import post_video
 
 async def run_auto_pilot_loop(accounts):
     """
-    A loop that: Finds Niche -> Generates Script -> Creates Video -> Posts to 100 Channels.
+    A loop that: Finds Niche -> Plans Strategy -> Generates Script -> Optimizes SEO -> Creates Video -> Posts to Channels.
     """
     print("Starting Auto-Pilot Loop...")
 
@@ -29,24 +31,38 @@ async def run_auto_pilot_loop(accounts):
         niche_data = "{'niche': 'Fallback Niche'}"
     print(f"Found niche: {niche_data}")
 
-    # 3. Generate Content (Creative Agent)
+    # 3. Define Strategy (Strategy Agent)
+    print("Defining strategy...")
+    strategy = await define_strategy(niche_data)
+    print(f"Strategy developed: {strategy.get('theme')}")
+
+    # 4. Generate Content (Creative Agent)
     print("Generating content...")
     try:
         if os.environ.get('GOOGLE_API_KEY') == 'dummy_key':
             content = {
-                "script": "Welcome to the latest AI tutorial. Today we talk about multi-agent systems. Subscribe for more!",
+                "script": f"Welcome to our {strategy.get('theme')} channel! Today we talk about multi-agent systems. Subscribe for more!",
                 "title": "AI Multi-Agent Systems Explained in 60s!",
                 "description": "Learn about multi-agent systems.",
                 "tags": ["AI", "Tech", "Tutorial"]
             }
         else:
+            # Pass both niche and strategy context to the creative agent in a real app
             content = await generate_content(niche_data)
     except Exception as e:
         print(f"Error generating content: {e}")
-        content = {"script": "Fallback script", "title": "Fallback title"}
+        content = {"script": "Fallback script", "title": "Fallback title", "tags": []}
     print(f"Generated script: {content.get('script')}")
 
-    # Process 100 channels concurrently (simulated with a smaller number or batches)
+    # 5. Optimize Metadata (SEO Agent)
+    print("Optimizing SEO...")
+    optimized_data = await optimize_metadata(content)
+    content['title'] = optimized_data.get('optimized_title', content.get('title'))
+    content['description'] = optimized_data.get('optimized_description', content.get('description'))
+    content['tags'] = optimized_data.get('optimized_tags', content.get('tags'))
+    print(f"Optimized title: {content.get('title')}")
+
+    # Process channels concurrently
     print(f"Processing for {len(accounts)} accounts...")
 
     async def process_account(account):

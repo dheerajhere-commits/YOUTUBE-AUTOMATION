@@ -30,20 +30,50 @@ def niche_finder():
 @app.command()
 def account_link(platform: str = typer.Option(..., help="Platform: 'youtube' or 'instagram'"),
                  account_id: str = typer.Option(..., help="Account ID or email"),
+                 channel_name: str = typer.Option(None, help="Friendly name for the channel"),
                  token: str = typer.Option(None, help="Access token (for Instagram)")):
-    """A secure workflow to add new Gmail/Instagram accounts and store refresh tokens."""
+    """A secure workflow to add new Gmail/Instagram accounts."""
     if platform.lower() == 'youtube':
-        typer.echo(f"Linking YouTube account: {account_id}")
+        typer.echo(f"Linking YouTube account: {account_id} {f'({channel_name})' if channel_name else ''}")
         link_google_account(account_id)
     elif platform.lower() == 'instagram':
         if not token:
             typer.echo("Error: --token is required for Instagram.")
             raise typer.Exit(code=1)
-        typer.echo(f"Linking Instagram account: {account_id}")
+        typer.echo(f"Linking Instagram account: {account_id} {f'({channel_name})' if channel_name else ''}")
         link_instagram_account(account_id, token)
     else:
         typer.echo("Invalid platform. Use 'youtube' or 'instagram'.")
         raise typer.Exit(code=1)
+
+@app.command()
+def list_accounts():
+    """List all connected channels/accounts."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, platform, account_id, status FROM accounts")
+        rows = cursor.fetchall()
+        if not rows:
+            typer.echo("No accounts found. Use 'account-link' to add one.")
+            return
+
+        typer.echo("Connected Accounts:")
+        typer.echo("-" * 40)
+        for row in rows:
+            typer.echo(f"[{row['id']}] {row['platform'].upper()} - {row['account_id']} ({row['status']})")
+        typer.echo("-" * 40)
+
+@app.command()
+def remove_account(account_id: str = typer.Argument(..., help="The account ID or email to remove")):
+    """Remove a connected account."""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM accounts WHERE account_id=?", (account_id,))
+        if cursor.rowcount > 0:
+            conn.commit()
+            typer.echo(f"Successfully removed account: {account_id}")
+        else:
+            typer.echo(f"Account not found: {account_id}")
 
 @app.command()
 def auto_pilot():
