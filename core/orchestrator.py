@@ -72,6 +72,6 @@ async def run_auto_pilot_loop(accounts):
 
     # Use asyncio.gather to process accounts concurrently
     tasks = [process_account(acc) for acc in accounts]
-    await asyncio.gather(*tasks)
+    await asyncio.gather(*tasks, return_exceptions=True)
 
     print("Auto-Pilot Loop Completed.")

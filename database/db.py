@@ -5,6 +5,7 @@ from contextlib import contextmanager
 DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'nexus100.db')
 
 def init_db():
+    os.makedirs(os.path.join(os.path.dirname(__file__), '..', 'assets'), exist_ok=True)
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
