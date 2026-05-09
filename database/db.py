@@ -45,6 +45,18 @@ def init_db():
             )
         ''')
 
+        # Neural Memory Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS neural_memory (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                niche TEXT NOT NULL UNIQUE,
+                strategy TEXT,
+                score REAL DEFAULT 5.0,
+                encounters INTEGER DEFAULT 0,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
         conn.commit()
 
 @contextmanager

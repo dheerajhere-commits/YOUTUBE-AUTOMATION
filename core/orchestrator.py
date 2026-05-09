@@ -9,12 +9,16 @@ from agents.seo_agent import optimize_metadata
 from agents.production_agent import create_video
 from agents.ops_agent import manage_accounts
 from agents.posting_agent import post_video
+from core.brain import CognitiveBrain
+import random
 
 async def run_auto_pilot_loop(accounts):
     """
     A loop that: Finds Niche -> Plans Strategy -> Generates Script -> Optimizes SEO -> Creates Video -> Posts to Channels.
     """
     print("Starting Auto-Pilot Loop...")
+    brain = CognitiveBrain()
+    concurrency_limit = brain.get_concurrency_limit()
 
     # 1. Manage accounts (Ops Agent)
     await manage_accounts(accounts)
@@ -30,6 +34,20 @@ async def run_auto_pilot_loop(accounts):
         print(f"Error finding niche: {e}")
         niche_data = "{'niche': 'Fallback Niche'}"
     print(f"Found niche: {niche_data}")
+
+    # Brain Evaluation
+    import ast
+    try:
+        niche_dict = ast.literal_eval(niche_data)
+        niche_name = niche_dict.get('niche', 'Fallback Niche')
+    except:
+        niche_name = 'Fallback Niche'
+
+    confidence = brain.evaluate_niche(niche_name)
+    if confidence < 0.6:
+        print("[Brain] Low confidence in this niche based on past failure. Requesting manual override or picking new niche...")
+        # In a fully autonomous loop, we would re-roll the niche here.
+        # For this execution, we will proceed but note the low confidence.
 
     # 3. Define Strategy (Strategy Agent)
     print("Defining strategy...")
@@ -62,8 +80,8 @@ async def run_auto_pilot_loop(accounts):
     content['tags'] = optimized_data.get('optimized_tags', content.get('tags'))
     print(f"Optimized title: {content.get('title')}")
 
-    # Process channels concurrently
-    print(f"Processing for {len(accounts)} accounts...")
+    # Process channels concurrently (using Brain's hardware limits)
+    print(f"Processing for {len(accounts)} accounts with concurrency limit {concurrency_limit}...")
 
     async def process_account(account):
         account_id = account['account_id']
@@ -86,8 +104,16 @@ async def run_auto_pilot_loop(accounts):
             ''', (account_id, content.get('title'), video_path, 'posted'))
             conn.commit()
 
-    # Use asyncio.gather to process accounts concurrently
-    tasks = [process_account(acc) for acc in accounts]
-    await asyncio.gather(*tasks, return_exceptions=True)
+    # Batch process using asyncio with chunks limited by concurrency_limit
+    for i in range(0, len(accounts), concurrency_limit):
+        chunk = accounts[i:i + concurrency_limit]
+        tasks = [process_account(acc) for acc in chunk]
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    # 6. Brain Feedback Loop
+    # Simulate receiving performance metrics (views, engagement) from the platform 24h later
+    # We randomize a score here to simulate the AI learning over time
+    simulated_score = round(random.uniform(2.0, 10.0), 2)
+    brain.memorize_success(niche_name, strategy.get('theme', 'default'), simulated_score)
 
     print("Auto-Pilot Loop Completed.")
