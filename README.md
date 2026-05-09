@@ -4,11 +4,14 @@ NEXUS-100 is a Windows-compatible CLI tool designed to manage an automated YouTu
 
 ## Features
 
-1. **Research Agent (`--niche-finder`)**: Scrapes trending data to identify high-CPM, low-competition niches.
-2. **Creative Agent**: Generates viral scripts and SEO-optimized metadata using Gemini 1.5 Flash.
-3. **Production Agent**: Programmatically generates videos using `MoviePy` to overlay AI-generated voiceovers (`gTTS`) onto stock footage.
-4. **Ops Agent**: Manages OAuth2 token rotation for accounts and implements a "Cooldown" logic to prevent IP flagging.
-5. **Posting Agent (`--auto-pilot`)**: Handles scheduled uploads via YouTube Data API v3 and Instagram Graph API with anti-spam measures.
+1. **Neural Cognitive Brain**: Dynamically scales operations based on your hardware (Windows 7 low-end PCs to modern high-end rigs) and utilizes a SQLite-backed memory engine to learn and adjust confidence based on the historical success of niches and strategies.
+2. **Research Agent (`--niche-finder`)**: Scrapes trending data to identify high-CPM, low-competition niches.
+3. **Strategy Agent**: Formulates channel themes and strategies to guide content generation.
+4. **Creative Agent**: Generates viral scripts using Gemini 1.5 Flash.
+5. **SEO Agent**: Optimizes titles, descriptions, and hashtags for maximum platform visibility and click-through rates.
+6. **Production Agent**: Programmatically generates videos using `MoviePy` to overlay AI-generated voiceovers (`gTTS`) onto stock footage.
+7. **Ops Agent**: Manages OAuth2 token rotation for accounts and implements a "Cooldown" logic to prevent IP flagging.
+8. **Posting Agent (`--auto-pilot`)**: Handles scheduled uploads via YouTube Data API v3 and Instagram Graph API with anti-spam measures.
 
 ## Setup Instructions
 
@@ -72,26 +75,47 @@ python main.py --help
    ```
 
 2. **Link Accounts**:
-   Securely add new Gmail/Instagram accounts.
+   Securely add new Gmail/Instagram accounts. You can also specify an optional `--channel-name`.
    ```bash
    # For YouTube
-   python main.py account-link --platform youtube --account-id your_email@gmail.com
+   python main.py account-link --platform youtube --account-id your_email@gmail.com --channel-name "My Channel"
 
    # For Instagram
    python main.py account-link --platform instagram --account-id your_ig_handle --token your_access_token
    ```
 
-3. **Run Auto-Pilot**:
-   Starts the continuous loop that finds a niche, generates a script, creates the video, and schedules posts for all linked accounts.
+3. **Manage Accounts**:
+   View or remove your connected accounts.
+   ```bash
+   # List all connected accounts
+   python main.py list-accounts
+
+   # Remove a specific account
+   python main.py remove-account your_email@gmail.com
+   ```
+
+4. **Run Auto-Pilot**:
+   Starts the continuous multi-agent loop that finds a niche, develops a strategy, generates a script, optimizes SEO, creates the video, and schedules posts for all linked accounts.
    ```bash
    python main.py auto-pilot
    ```
 
-4. **Anti-Spam Features**:
+5. **Anti-Spam Features**:
    View information about the built-in anti-spam measures.
    ```bash
    python main.py anti-spam
    ```
+
+## Building for Windows
+
+If you want to package the entire project into a single standalone executable `.exe` file for Windows:
+
+```bash
+# Run the included build script
+build.bat
+```
+
+The resulting `NEXUS-100.exe` will be located in the `dist/` directory.
 
 ## Demo
 
