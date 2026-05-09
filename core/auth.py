@@ -57,6 +57,15 @@ def link_google_account(account_id):
     print(f"Successfully linked account: {account_id}")
     return creds
 
+def get_google_credentials(account_id):
+    """
+    Retrieves stored Google credentials for an account.
+    """
+    token_path = f'token_{account_id}.json'
+    if os.path.exists(token_path):
+        return Credentials.from_authorized_user_file(token_path, SCOPES)
+    return None
+
 def link_instagram_account(account_id, access_token):
     """
     Links an Instagram account by storing its access token.
